@@ -75,7 +75,14 @@ async function handleFile(file) {
 
 async function uploadToSupabase(data, fileName) {
     try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/csv_uploads`, {
+        // Create a single upload record first
+        const uploadRecord = {
+            file_name: fileName,
+            upload_time: new Date().toISOString(),
+            record_count: data.length
+        };
+
+        const uploadResponse = await fetch(`${SUPABASE_URL}/rest/v1/csv_uploads`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -83,24 +90,40 @@ async function uploadToSupabase(data, fileName) {
                 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                 'Prefer': 'return=representation'
             },
-            body: JSON.stringify({
-                file_name: fileName,
-                data: data
-            })
+            body: JSON.stringify(uploadRecord)
         });
         
-        if (!response.ok) {
-            console.error('Upload failed:', await response.text());
+        if (!uploadResponse.ok) {
+            console.error('Upload failed:', await uploadResponse.text());
             return false;
         }
         
-        const result = await response.json();
-        console.log('Upload successful:', result);
+        const uploadResult = await uploadResponse.json();
+        const uploadId = uploadResult[0].id;
         
-        // Store the ID for reference
-        if (result && result[0]) {
-            sessionStorage.setItem('lastUploadId', result[0].id);
+        // Now insert all cards with the upload_id reference
+        const cardsToInsert = data.map(card => ({
+            upload_id: uploadId,
+            card_data: card
+        }));
+
+        const cardsResponse = await fetch(`${SUPABASE_URL}/rest/v1/card_records`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify(cardsToInsert)
+        });
+        
+        if (!cardsResponse.ok) {
+            console.error('Cards upload failed:', await cardsResponse.text());
+            return false;
         }
+        
+        console.log('Upload successful!');
+        sessionStorage.setItem('lastUploadId', uploadId);
         
         return true;
     } catch (error) {
@@ -112,7 +135,7 @@ async function uploadToSupabase(data, fileName) {
 async function loadRecentUploads() {
     try {
         const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/csv_uploads?select=id,file_name,upload_time&order=upload_time.desc&limit=10`,
+            `${SUPABASE_URL}/rest/v1/csv_uploads?select=id,file_name,upload_time,record_count&order=upload_time.desc&limit=10`,
             {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
@@ -124,7 +147,6 @@ async function loadRecentUploads() {
         if (response.ok) {
             const uploads = await response.json();
             console.log('Recent uploads:', uploads);
-            // You can display these in a dropdown or list if needed
         }
     } catch (error) {
         console.error('Error loading recent uploads:', error);
@@ -210,7 +232,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         // Load specific upload by ID
         try {
             const response = await fetch(
-                `${SUPABASE_URL}/rest/v1/csv_uploads?id=eq.${dataId}&select=*`,
+                `${SUPABASE_URL}/rest/v1/card_records?upload_id=eq.${dataId}&select=card_data`,
                 {
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -221,11 +243,29 @@ window.addEventListener('DOMContentLoaded', async () => {
             
             if (response.ok) {
                 const result = await response.json();
-                if (result && result[0]) {
-                    const uploadData = result[0];
-                    fileName.textContent = `File: ${uploadData.file_name}`;
-                    fileInfo.classList.add('show');
-                    displayTable(uploadData.data);
+                if (result && result.length > 0) {
+                    const cardData = result.map(record => record.card_data);
+                    
+                    // Get upload info
+                    const uploadResponse = await fetch(
+                        `${SUPABASE_URL}/rest/v1/csv_uploads?id=eq.${dataId}&select=file_name`,
+                        {
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                            }
+                        }
+                    );
+                    
+                    if (uploadResponse.ok) {
+                        const uploadInfo = await uploadResponse.json();
+                        if (uploadInfo && uploadInfo[0]) {
+                            fileName.textContent = `File: ${uploadInfo[0].file_name}`;
+                            fileInfo.classList.add('show');
+                        }
+                    }
+                    
+                    displayTable(cardData);
                     showMessage('📥 Loaded shared data', 'success');
                 }
             }
@@ -233,5 +273,4 @@ window.addEventListener('DOMContentLoaded', async () => {
             console.error('Error loading shared data:', error);
         }
     }
-
 });
