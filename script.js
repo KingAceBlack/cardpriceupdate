@@ -1,5 +1,5 @@
 // Add Supabase configuration at the top
-const SUPABASE_URL = 'https://nsgjcgzucpdojbngqxqn.supabase.co/rest/v1/csv_uploads'; // Replace with your URL
+const SUPABASE_URL = 'https://nsgjcgzucpdojbngqxqn.supabase.co'; // Replace with your URL
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zZ2pjZ3p1Y3Bkb2pibmdxeHFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3MDkyNjksImV4cCI6MjA2MTI4NTI2OX0.cjsGdvzuDic4HTV8g_erMP4DQcukQll9BhX0xYsUiA4'; // Replace with your key
 
 const uploadArea = document.getElementById('uploadArea');
@@ -233,4 +233,5 @@ window.addEventListener('DOMContentLoaded', async () => {
             console.error('Error loading shared data:', error);
         }
     }
+
 });
