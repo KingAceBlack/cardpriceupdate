@@ -295,17 +295,18 @@
             document.getElementById('tableContainer').style.display = 'block';
             document.getElementById('tableView').style.display = 'block';
 
-            const headers = Object.keys(data[0]);
-            
+            // Only display selected fields
+            const displayFields = ["Card", "Player", "Current Value", "Slab Serial #"];
+
             const thead = document.getElementById('tableHead');
-            thead.innerHTML = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+            thead.innerHTML = '<tr>' + displayFields.map(h => `<th>${h}</th>`).join('') + '</tr>';
 
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
-            
+
             data.forEach(row => {
                 const tr = document.createElement('tr');
-                headers.forEach(header => {
+                displayFields.forEach(header => {
                     const td = document.createElement('td');
                     td.textContent = row[header] || '';
                     tr.appendChild(td);
@@ -313,6 +314,7 @@
                 tbody.appendChild(tr);
             });
         }
+
 
         function showNoData() {
             document.getElementById('loading').style.display = 'none';
