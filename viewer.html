@@ -221,7 +221,7 @@
                     if (allUploads.length > 0) {
                         displayUploadsList(allUploads);
                         // Load the most recent upload by default
-                        loadUpload(allUploads[0]);
+                        await loadUpload(allUploads[0]);
                     } else {
                         showNoData();
                     }
@@ -250,7 +250,7 @@
                 const date = new Date(upload.upload_time);
                 item.innerHTML = `
                     <div class="upload-item-name">📄 ${upload.file_name}</div>
-                    <div class="upload-item-time">${date.toLocaleString()} · ${upload.data.length} records</div>
+                    <div class="upload-item-time">${date.toLocaleString()} · ${upload.record_count || 0} records</div>
                 `;
                 
                 container.appendChild(item);
@@ -259,9 +259,30 @@
             document.getElementById('uploadsList').style.display = 'block';
         }
 
-        function loadUpload(upload) {
-            currentData = upload.data;
-            displayTable(currentData);
+        async function loadUpload(upload) {
+            try {
+                // Fetch all card records for this upload
+                const response = await fetch(
+                    `${SUPABASE_URL}/rest/v1/card_records?upload_id=eq.${upload.id}&select=card_data`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    }
+                );
+
+                if (response.ok) {
+                    const records = await response.json();
+                    currentData = records.map(record => record.card_data);
+                    displayTable(currentData);
+                } else {
+                    showError('Failed to load card data');
+                }
+            } catch (error) {
+                console.error('Error loading card data:', error);
+                showError('Error loading card data');
+            }
         }
 
         function displayTable(data) {
