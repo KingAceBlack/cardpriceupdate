@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV File Uploader</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📊 CSV File Upload</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">
+                <strong>Click to upload</strong> or drag and drop
+            </div>
+            <div class="upload-text" style="font-size: 14px; color: #999;">
+                CSV files only
+            </div>
+            <input type="file" id="fileInput" accept=".csv">
+        </div>
+        
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="viewer.html" class="btn" style="display: inline-block; text-decoration: none;">
+                👁️ View JSON Data
+            </a>
+        </div>
+        
+        <div class="table-container" id="tableContainer">
+            <h2>Card Data</h2>
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>Card</th>
+                        <th>Player</th>
+                        <th>Current Value</th>
+                        <th>Slab Serial #</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

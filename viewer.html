@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Data Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .upload-list {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .upload-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .upload-item:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .upload-item.active {
+            border-color: #764ba2;
+            background: #f0f1ff;
+        }
+
+        .upload-item-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .upload-item-time {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .table-view {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        th {
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
+        }
+
+        tbody tr:hover {
+            background: #f8f9ff;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .no-data-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 All CSV Uploads</h1>
+        
+        <div class="controls">
+            <button class="btn" onclick="refreshData()">🔄 Refresh</button>
+            <button class="btn btn-secondary" onclick="downloadJson()">⬇️ Download Current</button>
+            <button class="btn" onclick="goToUpload()">📤 Upload Page</button>
+        </div>
+
+        <div id="uploadsList" class="upload-list" style="display: none;">
+            <h3 style="margin-bottom: 15px; color: #333;">Recent Uploads</h3>
+            <div id="uploadsContainer"></div>
+        </div>
+
+        <div id="loading" class="loading">Loading data...</div>
+        
+        <div class="table-view" id="tableView" style="display: none;">
+            <div class="no-data" id="noData">
+                <div class="no-data-icon">🔭</div>
+                <h3>No Data Available</h3>
+                <p>Upload a CSV file to see data here</p>
+            </div>
+            <div id="tableContainer" style="display: none;">
+                <table id="dataTable">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Replace with your Supabase credentials
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+        let currentData = null;
+        let allUploads = [];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadAllUploads();
+        });
+
+        async function loadAllUploads() {
+            try {
+                const response = await fetch(
+                    `${SUPABASE_URL}/rest/v1/csv_uploads?select=*&order=upload_time.desc&limit=50`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    }
+                );
+
+                if (response.ok) {
+                    allUploads = await response.json();
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    if (allUploads.length > 0) {
+                        displayUploadsList(allUploads);
+                        // Load the most recent upload by default
+                        loadUpload(allUploads[0]);
+                    } else {
+                        showNoData();
+                    }
+                } else {
+                    showError('Failed to load data');
+                }
+            } catch (error) {
+                console.error('Error loading uploads:', error);
+                showError('Error loading data');
+            }
+        }
+
+        function displayUploadsList(uploads) {
+            const container = document.getElementById('uploadsContainer');
+            container.innerHTML = '';
+            
+            uploads.forEach((upload, index) => {
+                const item = document.createElement('div');
+                item.className = 'upload-item' + (index === 0 ? ' active' : '');
+                item.onclick = () => {
+                    document.querySelectorAll('.upload-item').forEach(el => el.classList.remove('active'));
+                    item.classList.add('active');
+                    loadUpload(upload);
+                };
+                
+                const date = new Date(upload.upload_time);
+                item.innerHTML = `
+                    <div class="upload-item-name">📄 ${upload.file_name}</div>
+                    <div class="upload-item-time">${date.toLocaleString()} · ${upload.data.length} records</div>
+                `;
+                
+                container.appendChild(item);
+            });
+            
+            document.getElementById('uploadsList').style.display = 'block';
+        }
+
+        function loadUpload(upload) {
+            currentData = upload.data;
+            displayTable(currentData);
+        }
+
+        function displayTable(data) {
+            if (!data || data.length === 0) {
+                showNoData();
+                return;
+            }
+
+            document.getElementById('noData').style.display = 'none';
+            document.getElementById('tableContainer').style.display = 'block';
+            document.getElementById('tableView').style.display = 'block';
+
+            const headers = Object.keys(data[0]);
+            
+            const thead = document.getElementById('tableHead');
+            thead.innerHTML = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                headers.forEach(header => {
+                    const td = document.createElement('td');
+                    td.textContent = row[header] || '';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showNoData() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('tableView').style.display = 'block';
+            document.getElementById('noData').style.display = 'block';
+            document.getElementById('tableContainer').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('loading').innerHTML = `
+                <div style="color: #f5576c;">❌ ${message}</div>
+            `;
+        }
+
+        function refreshData() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('tableView').style.display = 'none';
+            loadAllUploads();
+        }
+
+        function downloadJson() {
+            if (!currentData) {
+                alert('No data available to download');
+                return;
+            }
+
+            const dataStr = JSON.stringify(currentData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'data.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function goToUpload() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
